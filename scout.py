@@ -6,12 +6,16 @@ Pulls tweets from X API → sends to NanoGPT LLM API → outputs intel brief.
 
 Usage:
   python3 scout.py                          # print brief to stdout
+  python3 scout.py --topic "robotics"       # scout a different topic
   python3 scout.py --save                   # save to briefs/ directory
   python3 scout.py --from-file tweets.json  # replay from saved tweets
 
 Required env vars:
   X_BEARER_TOKEN      — X API bearer token (or set X_CONSUMER_KEY + X_API_KEY)
   NANOGPT_API_KEY     — NanoGPT API key
+
+Optional env vars:
+  SCOUT_FOCUS         — Topic/domain to scout (default: local AI / local LLMs)
 """
 
 import os
@@ -23,8 +27,46 @@ from urllib.request import Request, urlopen
 from urllib.parse import urlencode
 from pathlib import Path
 
-from config import QUERIES, LOOKBACK_HOURS, MAX_RESULTS_PER_QUERY, LLM_MODEL, MAX_TOKENS
-from prompt import SYSTEM_PROMPT
+from config import (
+    DEFAULT_QUERIES, LOOKBACK_HOURS, MAX_RESULTS_PER_QUERY,
+    LLM_MODEL, MAX_TOKENS, SCOUT_FOCUS,
+)
+from prompt import build_system_prompt
+
+
+# ─── TOPIC QUERIES ───────────────────────────────────────────────────────────
+
+def build_topic_queries(topic: str) -> list[str]:
+    """Build X search queries from a freeform topic string.
+
+    Extracts key terms and builds broad + specific queries so the
+    X API returns relevant tweets.
+    """
+    # Split topic into searchable terms/phrases
+    # e.g. "image generation models including SDXL, PonyXL" → keywords
+    words = [w.strip().rstrip(",") for w in topic.split() if len(w.strip().rstrip(",")) > 2]
+    # Filter out filler words
+    filler = {"and", "the", "for", "with", "including", "models", "model", "such", "like", "also"}
+    keywords = [w for w in words if w.lower() not in filler]
+
+    queries = []
+    # Build OR query from all keywords (broad sweep)
+    if keywords:
+        or_terms = " OR ".join(f'"{k}"' for k in keywords[:8])
+        queries.append(f'({or_terms}) -is:retweet')
+
+    # Narrower: keywords + signal words
+    if len(keywords) >= 2:
+        top = " OR ".join(f'"{k}"' for k in keywords[:4])
+        queries.append(
+            f'({top}) ("release" OR "new" OR "benchmark" OR "update" OR "community") -is:retweet'
+        )
+
+    # If we got nothing useful, fall back to quoting the whole topic
+    if not queries:
+        queries.append(f'"{topic}" -is:retweet')
+
+    return queries
 
 
 # ─── AUTH ─────────────────────────────────────────────────────────────────────
@@ -79,7 +121,7 @@ def search_tweets(query: str, start_time: str, bearer_token: str) -> dict:
         return {"error": str(e), "query": query}
 
 
-def pull_tweets(bearer_token: str) -> dict:
+def pull_tweets(bearer_token: str, queries: list[str]) -> dict:
     start_time = (
         datetime.now(timezone.utc) - timedelta(hours=LOOKBACK_HOURS)
     ).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -90,8 +132,8 @@ def pull_tweets(bearer_token: str) -> dict:
         "queries": [],
     }
 
-    for i, query in enumerate(QUERIES, 1):
-        print(f"  [{i}/{len(QUERIES)}] {query[:60]}...", file=sys.stderr)
+    for i, query in enumerate(queries, 1):
+        print(f"  [{i}/{len(queries)}] {query[:60]}...", file=sys.stderr)
         result = search_tweets(query, start_time, bearer_token)
         all_results["queries"].append({
             "query": query,
@@ -102,13 +144,13 @@ def pull_tweets(bearer_token: str) -> dict:
         })
 
     total = sum(q["result_count"] for q in all_results["queries"])
-    print(f"  ✅ {total} tweets across {len(QUERIES)} queries", file=sys.stderr)
+    print(f"  ✅ {total} tweets across {len(queries)} queries", file=sys.stderr)
     return all_results
 
 
 # ─── STEP 2: GENERATE BRIEF ──────────────────────────────────────────────────
 
-def generate_brief(tweets_json: str) -> str:
+def generate_brief(tweets_json: str, system_prompt: str) -> str:
     api_key = os.environ.get("NANOGPT_API_KEY", "")
     if not api_key:
         print("❌ NANOGPT_API_KEY not set", file=sys.stderr)
@@ -118,7 +160,7 @@ def generate_brief(tweets_json: str) -> str:
         "model": LLM_MODEL,
         "max_tokens": MAX_TOKENS,
         "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Brief me.\n\n{tweets_json}"},
         ],
     }).encode()
@@ -145,7 +187,21 @@ def main():
     parser.add_argument("--save", action="store_true", help="Save brief to briefs/ directory")
     parser.add_argument("--save-tweets", action="store_true", help="Also save raw tweets JSON")
     parser.add_argument("--from-file", help="Use saved tweets JSON instead of pulling fresh")
+    parser.add_argument(
+        "--topic", default="",
+        help="Topic/domain to scout (default: local AI). Also via SCOUT_FOCUS env var",
+    )
     args = parser.parse_args()
+
+    # Resolve topic: CLI --topic > SCOUT_FOCUS env var > default
+    topic = args.topic or SCOUT_FOCUS or ""
+    if topic:
+        print(f"🎯 Focus: {topic}", file=sys.stderr)
+        system_prompt = build_system_prompt(topic=topic, topic_description=topic)
+        queries = build_topic_queries(topic)
+    else:
+        system_prompt = build_system_prompt()
+        queries = DEFAULT_QUERIES
 
     # Step 1: Get tweets
     if args.from_file:
@@ -157,11 +213,11 @@ def main():
             print("❌ Set X_BEARER_TOKEN (or X_CONSUMER_KEY + X_API_KEY)", file=sys.stderr)
             sys.exit(1)
         print("📡 Pulling tweets...", file=sys.stderr)
-        tweets_data = pull_tweets(bearer_token)
+        tweets_data = pull_tweets(bearer_token, queries)
         tweets_json = json.dumps(tweets_data, indent=2)
 
     # Step 2: Generate brief
-    brief = generate_brief(tweets_json)
+    brief = generate_brief(tweets_json, system_prompt)
 
     # Step 3: Output
     print(brief)

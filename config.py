@@ -1,6 +1,14 @@
-# Search queries — each targets a different slice of local AI.
-# Edit these as your interests evolve.
-QUERIES = [
+import os
+
+# ─── TOPIC FOCUS ──────────────────────────────────────────────────────────────
+# Override via --topic CLI arg or SCOUT_FOCUS env var.
+# When set, the scout searches for this topic instead of local AI.
+SCOUT_FOCUS = os.environ.get("SCOUT_FOCUS", "")
+
+# ─── SEARCH QUERIES ───────────────────────────────────────────────────────────
+# Default queries target local AI. When SCOUT_FOCUS is set via env or CLI,
+# scout.py builds topic-specific queries automatically.
+DEFAULT_QUERIES = [
     # Core local inference ecosystem
     '"llama.cpp" OR "llamacpp" OR "gguf" OR "mlx" OR "ollama" -is:retweet',
 
@@ -15,6 +23,9 @@ QUERIES = [
     # Small / efficient models
     '("small language model" OR "SLM" OR "tiny model" OR "efficient model") -is:retweet',
 ]
+
+# Active queries — overridden when a custom topic generates its own queries
+QUERIES = DEFAULT_QUERIES
 
 # ─── TUNING ───────────────────────────────────────────────────────────────────
 

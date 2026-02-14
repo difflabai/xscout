@@ -22,7 +22,23 @@ python3 scout.py                          # Print brief to stdout
 python3 scout.py --save                   # Save to briefs/YYYY-MM-DD.md
 python3 scout.py --save --save-tweets     # Also save raw tweet JSON
 python3 scout.py --from-file tweets.json  # Replay without hitting X API
+python3 scout.py --topic "robotics"       # Scout a different topic
 ```
+
+## Custom Topic / Domain
+
+By default the scout tracks local AI developments. You can point it at any topic:
+
+```bash
+# Via CLI argument
+python3 scout.py --topic "open source robotics"
+
+# Via environment variable
+export SCOUT_FOCUS="distributed databases"
+python3 scout.py
+```
+
+CLI `--topic` takes priority over the `SCOUT_FOCUS` env var. When a custom topic is set, the scout automatically builds relevant search queries and adapts the system prompt.
 
 ## Automate with Cron
 
@@ -37,10 +53,11 @@ Or use the included GitHub Actions workflow (`.github/workflows/daily-scout.yml`
 
 | What | Where |
 |------|-------|
-| Search queries | `config.py` → `QUERIES` |
+| Topic / domain focus | `--topic` CLI arg or `SCOUT_FOCUS` env var |
+| Search queries | `config.py` → `DEFAULT_QUERIES` |
 | Lookback window | `config.py` → `LOOKBACK_HOURS` |
 | LLM model | `config.py` → `LLM_MODEL` |
-| Brief format & tone | `prompt.py` → `SYSTEM_PROMPT` |
+| Brief format & tone | `prompt.py` → `build_system_prompt()` |
 
 ## Cost
 

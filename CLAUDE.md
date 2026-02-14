@@ -25,6 +25,10 @@ python3 scout.py --from-file briefs/2026-02-14-tweets.json
 OR instead of X_BEARER_TOKEN:
 - `X_CONSUMER_KEY` + `X_API_KEY` — will auto-exchange for bearer token
 
+## Optional env vars
+
+- `SCOUT_FOCUS` — Custom topic/domain to scout (default: local AI / local LLMs)
+
 ## Project structure
 
 - `scout.py` — Main pipeline script (pull → brief → output)
@@ -36,7 +40,8 @@ OR instead of X_BEARER_TOKEN:
 
 - **Add/remove search queries** → edit `config.py` QUERIES list
 - **Change model or token budget** → edit `config.py` LLM_MODEL / MAX_TOKENS
-- **Change brief format or tone** → edit `prompt.py` SYSTEM_PROMPT
+- **Change topic/focus** → `--topic` CLI arg or `SCOUT_FOCUS` env var
+- **Change brief format or tone** → edit `prompt.py` `build_system_prompt()`
 - **Change lookback window** → edit `config.py` LOOKBACK_HOURS (max 168)
 
 ## No external dependencies
