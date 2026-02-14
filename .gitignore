@@ -1,0 +1,6 @@
+.env
+*.pyc
+__pycache__/
+briefs/*.md
+briefs/*.json
+scout.log
