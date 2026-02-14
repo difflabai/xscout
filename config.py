@@ -21,6 +21,6 @@ QUERIES = [
 LOOKBACK_HOURS = 24          # How far back to search (max 168 for recent search)
 MAX_RESULTS_PER_QUERY = 20   # Per query, max 100
 
-# Claude API settings
-CLAUDE_MODEL = "claude-sonnet-4-5-20250929"  # Fast + cheap (~$0.01/run). Use claude-opus-4-6 for max quality.
+# LLM API settings (NanoGPT — OpenAI-compatible)
+LLM_MODEL = "minimax/minimax-m2.5"  # Open source, ~$0.001/run
 MAX_TOKENS = 4096

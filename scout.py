@@ -2,7 +2,7 @@
 """
 Local AI Scout — Automated Pipeline
 
-Pulls tweets from X API → sends to Claude API → outputs intel brief.
+Pulls tweets from X API → sends to NanoGPT LLM API → outputs intel brief.
 
 Usage:
   python3 scout.py                          # print brief to stdout
@@ -11,7 +11,7 @@ Usage:
 
 Required env vars:
   X_BEARER_TOKEN      — X API bearer token (or set X_CONSUMER_KEY + X_API_KEY)
-  ANTHROPIC_API_KEY   — Claude API key
+  NANOGPT_API_KEY     — NanoGPT API key
 """
 
 import os
@@ -23,7 +23,7 @@ from urllib.request import Request, urlopen
 from urllib.parse import urlencode
 from pathlib import Path
 
-from config import QUERIES, LOOKBACK_HOURS, MAX_RESULTS_PER_QUERY, CLAUDE_MODEL, MAX_TOKENS
+from config import QUERIES, LOOKBACK_HOURS, MAX_RESULTS_PER_QUERY, LLM_MODEL, MAX_TOKENS
 from prompt import SYSTEM_PROMPT
 
 
@@ -109,33 +109,32 @@ def pull_tweets(bearer_token: str) -> dict:
 # ─── STEP 2: GENERATE BRIEF ──────────────────────────────────────────────────
 
 def generate_brief(tweets_json: str) -> str:
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    api_key = os.environ.get("NANOGPT_API_KEY", "")
     if not api_key:
-        print("❌ ANTHROPIC_API_KEY not set", file=sys.stderr)
+        print("❌ NANOGPT_API_KEY not set", file=sys.stderr)
         sys.exit(1)
 
     body = json.dumps({
-        "model": CLAUDE_MODEL,
+        "model": LLM_MODEL,
         "max_tokens": MAX_TOKENS,
-        "system": SYSTEM_PROMPT,
         "messages": [
-            {"role": "user", "content": f"Brief me.\n\n{tweets_json}"}
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": f"Brief me.\n\n{tweets_json}"},
         ],
     }).encode()
 
-    req = Request("https://api.anthropic.com/v1/messages", data=body, method="POST")
+    req = Request("https://nano-gpt.com/api/v1/chat/completions", data=body, method="POST")
     req.add_header("Content-Type", "application/json")
-    req.add_header("x-api-key", api_key)
-    req.add_header("anthropic-version", "2023-06-01")
+    req.add_header("Authorization", f"Bearer {api_key}")
 
     print("  🧠 Generating brief...", file=sys.stderr)
 
     try:
         with urlopen(req) as resp:
             data = json.loads(resp.read().decode())
-            return data["content"][0]["text"]
+            return data["choices"][0]["message"]["content"]
     except Exception as e:
-        print(f"❌ Claude API error: {e}", file=sys.stderr)
+        print(f"❌ LLM API error: {e}", file=sys.stderr)
         sys.exit(1)
 
 

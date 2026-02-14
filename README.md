@@ -2,13 +2,13 @@
 
 Automated intel brief on local/on-device AI developments from X (Twitter).
 
-Pulls tweets → sends to Claude API → outputs a structured, opinionated brief. Zero dependencies beyond Python stdlib.
+Pulls tweets → sends to LLM via NanoGPT → outputs a structured, opinionated brief. Zero dependencies beyond Python stdlib.
 
 ## Quick Start
 
 ```bash
 # Set your keys
-export ANTHROPIC_API_KEY="sk-ant-..."
+export NANOGPT_API_KEY="..."
 export X_BEARER_TOKEN="AAAA..."  # or X_CONSUMER_KEY + X_API_KEY
 
 # Run it
@@ -31,13 +31,7 @@ python3 scout.py --from-file tweets.json  # Replay without hitting X API
 0 8 * * * cd /path/to/local-ai-scout && python3 scout.py --save >> scout.log 2>&1
 ```
 
-Or use the included GitHub Actions workflow (`.github/workflows/daily-scout.yml`) — set `ANTHROPIC_API_KEY` and `X_BEARER_TOKEN` as repository secrets.
-
-## Automate with Claude Code
-
-```bash
-claude code "cd local-ai-scout && python3 scout.py --save"
-```
+Or use the included GitHub Actions workflow (`.github/workflows/daily-scout.yml`) — set `NANOGPT_API_KEY` and `X_BEARER_TOKEN` as repository secrets.
 
 ## Customize
 
@@ -45,12 +39,12 @@ claude code "cd local-ai-scout && python3 scout.py --save"
 |------|-------|
 | Search queries | `config.py` → `QUERIES` |
 | Lookback window | `config.py` → `LOOKBACK_HOURS` |
-| Claude model | `config.py` → `CLAUDE_MODEL` |
+| LLM model | `config.py` → `LLM_MODEL` |
 | Brief format & tone | `prompt.py` → `SYSTEM_PROMPT` |
 
 ## Cost
 
-~$0.01/run on Sonnet. ~$0.10/run on Opus.
+~$0.001/run with MiniMax M2.5 via NanoGPT.
 
 ## License
 
