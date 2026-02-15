@@ -127,8 +127,8 @@ def main():
         help="Raw X API query strings (bypass query builder entirely)",
     )
     parser.add_argument(
-        "--source", default="x", choices=["x", "reddit", "civitai", "arxiv", "all"],
-        help="Source to pull from: x, reddit, civitai, arxiv, or all (default: x)",
+        "--source", default="x", choices=["x", "reddit", "civitai", "arxiv", "bluesky", "bsky", "all"],
+        help="Source to pull from: x, reddit, civitai, arxiv, bluesky (bsky), or all (default: x)",
     )
     args = parser.parse_args()
 
@@ -149,9 +149,14 @@ def main():
     else:
         queries = DEFAULT_QUERIES
 
-    # Resolve source list
+    # Resolve source list (deduplicate aliases that point to the same adapter)
     if args.source == "all":
-        source_names = list(ADAPTERS.keys())
+        seen_adapters = set()
+        source_names = []
+        for name, cls in ADAPTERS.items():
+            if cls not in seen_adapters:
+                seen_adapters.add(cls)
+                source_names.append(name)
     else:
         source_names = [args.source]
 
