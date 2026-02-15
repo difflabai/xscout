@@ -88,13 +88,21 @@ class HuggingFaceAdapter(SourceAdapter):
         return posts
 
     def _build_search_terms(self, topic: str, queries: list[str] | None) -> list[str]:
-        """Build search terms from topic string."""
+        """Build search terms from topic string — splits on commas and spaces."""
         if queries:
             return queries
-        terms = [t.strip() for t in topic.split(",") if t.strip()]
+        # Split on commas first, then on spaces within each segment
+        raw = [t.strip() for t in topic.split(",") if t.strip()]
+        terms = []
+        for segment in raw:
+            words = segment.split()
+            if len(words) > 1:
+                terms.extend(words)
+            else:
+                terms.append(segment)
         if not terms:
             terms = [topic]
-        return terms
+        return list(dict.fromkeys(terms))  # dedupe preserving order
 
     # ─── Models ──────────────────────────────────────────────────────────
 
@@ -114,13 +122,8 @@ class HuggingFaceAdapter(SourceAdapter):
         posts = []
         for item in data:
             created = item.get("createdAt", "")
-            if created:
-                try:
-                    ts = datetime.fromisoformat(created.replace("Z", "+00:00"))
-                    if ts < cutoff:
-                        continue
-                except ValueError:
-                    pass
+            # No date filtering for models — trendingScore sort handles recency.
+            # Models created years ago can still be trending today.
 
             model_id = item.get("id", "")
             pipeline = item.get("pipeline_tag", "")
