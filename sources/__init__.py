@@ -4,6 +4,7 @@ from .reddit import RedditAdapter
 from .civitai import CivitAIAdapter
 from .arxiv import ArxivAdapter
 from .lobsters import LobstersAdapter
+from .hackernews import HackerNewsAdapter
 
 ADAPTERS = {
     "x": XAdapter,
@@ -11,6 +12,7 @@ ADAPTERS = {
     "civitai": CivitAIAdapter,
     "arxiv": ArxivAdapter,
     "lobsters": LobstersAdapter,
+    "hackernews": HackerNewsAdapter,
 }
 
-__all__ = ["Post", "SourceAdapter", "XAdapter", "RedditAdapter", "CivitAIAdapter", "ArxivAdapter", "LobstersAdapter", "ADAPTERS"]
+__all__ = ["Post", "SourceAdapter", "XAdapter", "RedditAdapter", "CivitAIAdapter", "ArxivAdapter", "LobstersAdapter", "HackerNewsAdapter", "ADAPTERS"]
